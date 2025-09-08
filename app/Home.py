@@ -35,7 +35,8 @@ elif s.get("topk"):
     cols = st.columns(3)
     for i, p in enumerate(s["topk"]):
         with cols[i % 3]:
-            if p.image: st.image(p.image, use_column_width=True)
+            # if p.image: 
+            #     st.image(p.image, use_column_width=True)
             st.markdown(f"**{p.title}**")
             st.write(f"{p.currency} {p.price} • ⭐ {p.rating} ({p.reviews_count})")
             st.caption(p.source)

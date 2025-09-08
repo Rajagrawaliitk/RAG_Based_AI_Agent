@@ -9,7 +9,8 @@ def get_collection(name="guides"):
     if _collection is None:
         _collection = _client.get_or_create_collection(name=name,
             embedding_function=embedding_functions.SentenceTransformerEmbeddingFunction(
-                model_name="sentence-transformers/all-MiniLM-L6-v2"
+                model_name="sentence-transformers/all-MiniLM-L6-v2",
+                device="cpu"
             )
         )
     return _collection
