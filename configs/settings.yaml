@@ -1,0 +1,11 @@
+retrieval:
+  top_k: 3
+  collection_name: guides
+
+ranking:
+  weights:
+    rating: 0.35
+    price: 0.20
+    reviews: 0.15
+    features: 0.20
+    brand: 0.10
