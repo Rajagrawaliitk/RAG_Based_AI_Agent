@@ -1,6 +1,6 @@
 import math
 
-def score_and_rank(candidates, prefs, k=10):
+def score_and_rank(candidates, prefs, k=5):
     w = {"rating":0.35,"price":0.20,"reviews":0.15,"features":0.20,"brand":0.10}
     # price stats
     prices = [c.price for c in candidates if c.price]

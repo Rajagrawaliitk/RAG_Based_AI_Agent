@@ -1,30 +1,44 @@
 from langgraph.graph import StateGraph, END
 from backend.state import AgentState
-from backend.tools.providers.fakestore import search_products
 from backend.tools.normalize import normalize_fakestore
 from backend.tools.scoring import score_and_rank
 from backend.tools.rag_explainer import explain_products
 from backend.tools.cart_link import build_amazon_add_to_cart_url
 
-async def node_collect(s: AgentState) -> AgentState:
+# NEW imports
+from backend.tools.providers.fakestore import list_all_products
+from backend.retrieval.vectordb import upsert_products, query_products_semantic
+
+def node_collect(s: AgentState) -> AgentState:
     prefs = s.get("preferences", {})
     missing = []
-    if not prefs.get("category"): missing.append("category")
-    if prefs.get("budget_max") is None: missing.append("budget_max")
-    if prefs.get("rating_min") is None: missing.append("rating_min")
+    if not (prefs.get("free_query") and prefs["free_query"].strip()):
+        missing.append("free_query")
     s["missing"] = missing
     return s
 
 async def node_search(s: AgentState) -> AgentState:
-    if s.get("missing"): return s
-    items = await search_products(s["preferences"]["category"])
-    s["raw_results"] = items
+    if s.get("missing"):
+        return s
+    items = await list_all_products()
+    upsert_products(items)
+
+    q = s["preferences"]["free_query"]
+    k = int(s["preferences"].get("k", 5))  # <-- use user k (or default)
+    sem_hits = query_products_semantic(q, k=k)  # <-- use k here
+
+    meta_by_id = {h["id"]: h["meta"] for h in sem_hits}
+    raw = [it for it in items if str(it["id"]) in meta_by_id]
+    s["raw_results"] = raw
+    s["sem_hits"] = sem_hits  # keep for debugging / thresholding
     return s
 
 def node_rank(s: AgentState) -> AgentState:
+    k = int(s["preferences"].get("k", 10))  # <-- same k for final display
     s["candidates"] = normalize_fakestore(s["raw_results"])
-    s["topk"] = score_and_rank(s["candidates"], s["preferences"], k=9)
+    s["topk"] = score_and_rank(s["candidates"], s["preferences"], k=k)
     return s
+
 
 def node_explain(s: AgentState) -> AgentState:
     s["explanations"] = explain_products(s["topk"], s["preferences"])
@@ -32,7 +46,7 @@ def node_explain(s: AgentState) -> AgentState:
 
 def node_cart(s: AgentState) -> AgentState:
     if s.get("selected_ids"):
-        items = [{"asin": pid, "qty": 1} for pid in s["selected_ids"]]  # using id as placeholder
+        items = [{"asin": pid, "qty": 1} for pid in s["selected_ids"]]
         s["cart_url"] = build_amazon_add_to_cart_url(items)
     return s
 
