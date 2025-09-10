@@ -48,7 +48,15 @@ if s.get("missing"):
     
 elif s.get("topk"):
     cols = st.columns(3)
-    for i, p in enumerate(s["topk"]):
+
+    seen = set()
+    unique_products = []
+    for p in s["topk"]:
+        if p.id not in seen:
+            unique_products.append(p)
+            seen.add(p.id)
+
+    for i, p in enumerate(unique_products):
         with cols[i % 3]:
             # Show image if available
             if p.image:
