@@ -2,7 +2,7 @@ import streamlit as st
 import asyncio
 from backend.graph import build_graph
 from backend.state import AgentState
-
+# k=9
 st.set_page_config(page_title="RAG Shopper (Free)", layout="wide")
 st.title("Shopping Copilot — Free Stack")
 
@@ -34,7 +34,7 @@ if go:
         "free_query": (free_query or "").strip(),
         "budget_max": float(budget_max) if budget_max else None,
         "rating_min": float(rating_min) if rating_min else None,
-        "k": 3,  # <-- control top-K end-to-end
+        "k": 9,  # <-- control top-K end-to-end
     }
 
     st.session_state.state = asyncio.run(
@@ -50,21 +50,51 @@ elif s.get("topk"):
     cols = st.columns(3)
     for i, p in enumerate(s["topk"]):
         with cols[i % 3]:
-            # Uncomment if you want images once you use a provider that returns them
-            # if p.image: st.image(p.image, use_column_width=True)
+            # Show image if available
+            if p.image:
+                # st.image(str(p.image), use_column_width=True)
+                st.image(p.image, use_column_width=True)
+
+            # Title
             st.markdown(f"**{p.title}**")
+
+            # Price with discount/original if present
             price_txt = f"{p.currency or ''} {p.price}" if p.price is not None else "—"
+            if "discount" in p.attributes or "original_price" in p.attributes:
+                discount = p.attributes.get("discount")
+                original = p.attributes.get("original_price")
+                if original:
+                    st.write(f"~~{original}~~ → {price_txt} {f'({discount} off)' if discount else ''}")
+                else:
+                    st.write(price_txt)
+            else:
+                st.write(price_txt)
+
+            # Rating
             rating_txt = f"⭐ {p.rating} ({p.reviews_count})" if p.rating is not None else ""
-            st.write(f"{price_txt} • {rating_txt}")
+            if rating_txt:
+                st.write(rating_txt)
+
+            # Prime badge
+            if p.attributes.get("prime"):
+                st.success("Prime Eligible")
+
+            # Delivery info
+            if p.attributes.get("delivery"):
+                st.caption(f"Delivery: {p.attributes['delivery']}")
+
+            # Source + explanation
             st.caption(p.source)
             st.write(s["explanations"].get(p.id, ""))
+
+            # Checkbox to select product
             pick = st.checkbox(f"Select ({p.id})", key=f"sel-{p.id}")
             if pick and p.id not in s["selected_ids"]:
                 s["selected_ids"].append(p.id)
 
     if st.button("Add selected to Amazon cart"):
-        s = st.session_state.graph.ainvoke(s)   # cart node is sync
-        url = s.get("")
+        s = asyncio.run(st.session_state.graph.ainvoke(s))  # cart node
+        url = s.get("cart_url")
         if url:
             st.markdown(f"[Open cart link]({url})", unsafe_allow_html=True)
 

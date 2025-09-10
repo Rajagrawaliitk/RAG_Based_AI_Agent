@@ -82,5 +82,5 @@ def normalize_amazon(items):
                 "original_price": (raw_price or {}).get("original") if isinstance(raw_price, dict) else None,
             }
         ))
-        console.log(f"Normalized Amazon item: {out[-1]}")
+        # console.log(f"Normalized Amazon item: {out[-1]}")
     return out

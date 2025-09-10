@@ -1,7 +1,7 @@
 import chromadb
 from chromadb.utils import embedding_functions
-from typing import List, Dict
-
+from typing import List, Dict, Any
+# k=9
 _client = chromadb.Client()
 
 _guides = None
@@ -14,7 +14,7 @@ def _embedder():
         device="cpu"
     )
 
-# -------- Guides collection (unchanged behavior) --------
+# -------- Guides collection --------
 def get_guides_collection(name="guides"):
     global _guides
     if _guides is None:
@@ -32,7 +32,7 @@ def upsert_docs(docs: List[Dict]):
         metadatas=[{"source": d["source"]} for d in docs]
     )
 
-def query_texts(q: str, k: int = 3):
+def query_texts(q: str, k: int = 9):
     col = get_guides_collection()
     res = col.query(query_texts=[q], n_results=k)
     out = []
@@ -45,7 +45,7 @@ def query_texts(q: str, k: int = 3):
         })
     return out
 
-# -------- Products collection (NEW) --------
+# -------- Products collection (Amazon) --------
 def get_products_collection(name="products"):
     global _products
     if _products is None:
@@ -57,47 +57,88 @@ def get_products_collection(name="products"):
 
 def upsert_products(items: List[Dict]):
     """
-    items: raw provider dicts. We index title + description + category for semantic search.
+    items: raw Amazon scraper dicts
     """
     col = get_products_collection()
-    ids = []
-    texts = []
-    metas = []
+    ids, texts, metas = [], [], []
+
     for it in items:
-        pid = str(it.get("id"))
+        pid = str(it.get("asin") or it.get("id"))
+
         title = it.get("title") or ""
         desc = it.get("description") or ""
-        cat = it.get("category") or ""
-        text = f"{title}\n\n{desc}\n\nCategory: {cat}"
+
+        # rating
+        rat, reviews = None, 0
+        raw_rating = it.get("rating")
+        if isinstance(raw_rating, dict):
+            rat = raw_rating.get("stars")
+            reviews = raw_rating.get("count")
+        elif raw_rating:
+            rat = raw_rating
+
+        # price
+        price = None
+        raw_price = it.get("price")
+        if isinstance(raw_price, dict):
+            price = raw_price.get("current")
+        else:
+            price = raw_price
+
+        # text blob for semantic search
+        text = f"{title}\n\n{desc}\n\nRating: {rat}\n\nPrice: {price}"
+
         ids.append(pid)
         texts.append(text)
         metas.append({
-            "source": "fakestore",
+            "asin": pid,
+            "source": "amazon",
             "title": title,
-            "price": it.get("price"),
-            "rating": (it.get("rating") or {}).get("rate"),
-            "reviews_count": (it.get("rating") or {}).get("count", 0),
-            "image": it.get("image"),
-            "link": f"https://fakestoreapi.com/products/{pid}",
-            "category": cat,
+            "price": price,
+            "rating": rat,
+            "reviews_count": reviews,
+            "image": it.get("image_url"),
+            "link": it.get("product_url") or f"https://www.amazon.in/dp/{pid}",
+            "discount": (raw_price or {}).get("discount") if isinstance(raw_price, dict) else None,
+            "original_price": (raw_price or {}).get("original") if isinstance(raw_price, dict) else None,
+            "prime": it.get("prime_eligible", False),
         })
-    # Add or update (Chroma will dedupe by id)
+
     col.upsert(ids=ids, documents=texts, metadatas=metas)
 
-
-def query_products_semantic(q: str, k: int = 30, max_distance: float | None = 0.8):
+def query_products_semantic(q: str, k: int = 9, max_distance: float | None = 0.8):
+    """
+    Return semantic matches with rich metadata.
+    Each hit contains:
+      - id
+      - distance (semantic similarity)
+      - text (search blob)
+      - meta (metadata dict with price, rating, etc.)
+    """
     col = get_products_collection()
     res = col.query(query_texts=[(q or "").strip()], n_results=k)
+
     hits = []
     for i in range(len(res["ids"][0])):
         dist = res["distances"][0][i] if "distances" in res else None
         if max_distance is not None and dist is not None and dist > max_distance:
-            continue  # drop weak matches
+            continue
+
+        meta: Dict[str, Any] = res["metadatas"][0][i]
         hits.append({
             "id": res["ids"][0][i],
-            "text": res["documents"][0][i],
-            "meta": res["metadatas"][0][i],
             "distance": dist,
+            "text": res["documents"][0][i],
+            "meta": meta,  # full Amazon product info
+            "price": meta.get("price"),
+            "rating": meta.get("rating"),
+            "reviews_count": meta.get("reviews_count"),
+            "image": meta.get("image"),
+            "link": meta.get("link"),
+            "discount": meta.get("discount"),
+            "original_price": meta.get("original_price"),
+            "prime": meta.get("prime"),
         })
-    hits = sorted(hits, key=lambda x: x["distance"])
+
+    hits = sorted(hits, key=lambda x: x["distance"] if x["distance"] is not None else 1.0)
     return hits

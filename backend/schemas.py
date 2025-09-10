@@ -5,7 +5,7 @@ class Product(BaseModel):
     id: str                      # asin or provider id
     source: str                  # "fakestore", "scraper:site"
     title: str
-    image: Optional[HttpUrl] = None
+    image: Optional[str] = None
     price: Optional[float] = None
     currency: Optional[str] = "INR"
     rating: Optional[float] = None
