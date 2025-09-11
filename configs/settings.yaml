@@ -1,5 +1,5 @@
 retrieval:
-  top_k: 3
+  top_k: 9
   collection_name: guides
 
 ranking:
