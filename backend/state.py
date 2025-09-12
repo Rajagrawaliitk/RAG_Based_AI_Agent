@@ -10,4 +10,4 @@ class AgentState(TypedDict, total=False):
     topk: List[Product]
     explanations: Dict[str, str]      # product_id -> markdown with citations
     selected_ids: List[str]
-    cart_url: str
+    cart_url: List[str]  # List of URLs to add items to cart

@@ -61,7 +61,7 @@ elif s.get("topk"):
             # Show image if available
             if p.image:
                 # st.image(str(p.image), use_column_width=True)
-                st.image(p.image, use_column_width=True)
+                st.image(p.image, width='stretch')
 
             # Title
             st.markdown(f"**{p.title}**")
@@ -100,11 +100,21 @@ elif s.get("topk"):
             if pick and p.id not in s["selected_ids"]:
                 s["selected_ids"].append(p.id)
 
-    if st.button("Add selected to Amazon cart"):
+    if st.button("Get selected Products' Links"):
         s = asyncio.run(st.session_state.graph.ainvoke(s))  # cart node
-        url = s.get("cart_url")
-        if url:
-            st.markdown(f"[Open cart link]({url})", unsafe_allow_html=True)
+        urls = s.get("cart_url")
+        # if urls:
+        #     st.success("Click the links below to open the products on Amazon:")
+        #     for u in urls:
+        #         st.markdown(f"[]({u})")
+        if urls:
+            st.success("Click the links below to open the products on Amazon:")
+            # map asin -> title
+            title_by_id = {p.id: p.title for p in s.get("topk", [])}
+            for u in urls:
+                asin = u.split("/dp/")[-1]
+                title = title_by_id.get(asin, asin)
+                st.markdown(f"**{title}** → [Open product]({u})")
 
 elif go:
     st.header("No relevant product found")

@@ -1,4 +1,5 @@
 import glob
+
 from backend.retrieval.vectordb import upsert_docs
 
 def ingest_folder(path="data/guides"):

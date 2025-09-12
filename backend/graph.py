@@ -46,7 +46,8 @@ def node_explain(s: AgentState) -> AgentState:
 def node_cart(s: AgentState) -> AgentState:
     if s.get("selected_ids"):
         items = [{"asin": pid, "qty": 1} for pid in s["selected_ids"]]
-        s["cart_url"] = build_amazon_add_to_cart_url(items)
+        urls = build_amazon_add_to_cart_url(items)
+        s["cart_url"] = urls
     return s
 
 def build_graph():
