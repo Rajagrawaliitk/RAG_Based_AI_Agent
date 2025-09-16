@@ -1,7 +1,7 @@
 import chromadb
 from chromadb.utils import embedding_functions
 from typing import List, Dict, Any
-# k=9
+
 _client = chromadb.Client()
 
 _guides = None
@@ -14,7 +14,7 @@ def _embedder():
         device="cpu"
     )
 
-# -------- Guides collection --------
+# -------- Guides collection (for buying guides) --------
 def get_guides_collection(name="guides"):
     global _guides
     if _guides is None:
@@ -24,15 +24,18 @@ def get_guides_collection(name="guides"):
         )
     return _guides
 
-def upsert_docs(docs: List[Dict]):
+def upsert_guides(docs: List[Dict]):
+    """
+    docs: [{"id": "...", "text": "...", "source": "filename"}]
+    """
     col = get_guides_collection()
-    col.add(
+    col.upsert(
         ids=[d["id"] for d in docs],
         documents=[d["text"] for d in docs],
-        metadatas=[{"source": d["source"]} for d in docs]
+        metadatas=[{"source": d["source"]} for d in docs],
     )
 
-def query_texts(q: str, k: int = 9):
+def query_guides(q: str, k: int = 9):
     col = get_guides_collection()
     res = col.query(query_texts=[q], n_results=k)
     out = []
@@ -56,14 +59,15 @@ def get_products_collection(name="products"):
     return _products
 
 def upsert_products(items: List[Dict]):
-    """
-    items: raw Amazon scraper dicts
-    """
     col = get_products_collection()
     ids, texts, metas = [], [], []
+    seen = set()
 
     for it in items:
         pid = str(it.get("asin") or it.get("id"))
+        if pid in seen:
+            continue  # skip duplicates
+        seen.add(pid)
 
         title = it.get("title") or ""
         desc = it.get("description") or ""
@@ -85,7 +89,6 @@ def upsert_products(items: List[Dict]):
         else:
             price = raw_price
 
-        # text blob for semantic search
         text = f"{title}\n\n{desc}\n\nRating: {rat}\n\nPrice: {price}"
 
         ids.append(pid)
@@ -104,16 +107,13 @@ def upsert_products(items: List[Dict]):
             "prime": it.get("prime_eligible", False),
         })
 
-    col.upsert(ids=ids, documents=texts, metadatas=metas)
+    if ids:
+        col.upsert(ids=ids, documents=texts, metadatas=metas)
+
 
 def query_products_semantic(q: str, k: int = 9, max_distance: float | None = 0.8):
     """
-    Return semantic matches with rich metadata.
-    Each hit contains:
-      - id
-      - distance (semantic similarity)
-      - text (search blob)
-      - meta (metadata dict with price, rating, etc.)
+    Semantic product matches with metadata
     """
     col = get_products_collection()
     res = col.query(query_texts=[(q or "").strip()], n_results=k)
@@ -123,13 +123,12 @@ def query_products_semantic(q: str, k: int = 9, max_distance: float | None = 0.8
         dist = res["distances"][0][i] if "distances" in res else None
         if max_distance is not None and dist is not None and dist > max_distance:
             continue
-
         meta: Dict[str, Any] = res["metadatas"][0][i]
         hits.append({
             "id": res["ids"][0][i],
             "distance": dist,
             "text": res["documents"][0][i],
-            "meta": meta,  # full Amazon product info
+            "meta": meta,
             "price": meta.get("price"),
             "rating": meta.get("rating"),
             "reviews_count": meta.get("reviews_count"),
@@ -140,5 +139,4 @@ def query_products_semantic(q: str, k: int = 9, max_distance: float | None = 0.8
             "prime": meta.get("prime"),
         })
 
-    hits = sorted(hits, key=lambda x: x["distance"] if x["distance"] is not None else 1.0)
-    return hits
+    return sorted(hits, key=lambda x: x["distance"] if x["distance"] is not None else 1.0)

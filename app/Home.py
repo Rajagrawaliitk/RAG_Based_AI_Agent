@@ -94,7 +94,6 @@ elif s.get("topk"):
             # Source + explanation
             st.caption(p.source)
             st.write(s["explanations"].get(p.id, ""))
-
             # Checkbox to select product
             pick = st.checkbox(f"Select ({p.id})", key=f"sel-{p.id}")
             if pick and p.id not in s["selected_ids"]:

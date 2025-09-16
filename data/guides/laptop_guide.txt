@@ -1,0 +1,29 @@
+Laptop Buying Guide
+
+1. CPU & Performance
+- For general use: Intel i5 / Ryzen 5.
+- For gaming or heavy work: i7 / Ryzen 7 or above.
+- Apple M-series are efficient and powerful for creative workloads.
+
+2. RAM
+- Minimum 8 GB for casual use.
+- 16 GB+ for multitasking, coding, and creative software.
+- 32 GB for professionals (video editing, ML, CAD).
+
+3. Storage
+- SSD is a must. 512 GB is a sweet spot.
+- NVMe SSDs are much faster than SATA.
+
+4. Display
+- 14–15 inch Full HD is standard.
+- 120Hz+ refresh is good for gamers.
+- Color accuracy (sRGB, DCI-P3) matters for creatives.
+
+5. Battery & Portability
+- Ultrabooks can last 8–12 hours.
+- Gaming laptops have 3–5 hours typically.
+- Weight under 1.5 kg is easier for travel.
+
+6. Connectivity
+- Thunderbolt 4 or USB-C PD charging is very useful.
+- HDMI/SD card readers may matter for professionals.

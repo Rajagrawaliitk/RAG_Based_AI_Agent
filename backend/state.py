@@ -11,3 +11,6 @@ class AgentState(TypedDict, total=False):
     explanations: Dict[str, str]      # product_id -> markdown with citations
     selected_ids: List[str]
     cart_url: List[str]  # List of URLs to add items to cart
+    rewritten: Dict
+    raw_results: List[Dict]
+    product_hits: List[Dict]
