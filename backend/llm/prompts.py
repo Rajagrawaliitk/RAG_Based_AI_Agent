@@ -5,15 +5,18 @@ If you don't know, say you don't know.
 """
 
 REWRITE_SYSTEM = """You are a product search query rewriter for e-commerce.
-Extract everything relevant from the user's free text. Just write it in a better and cleaner manner.
-Return JSON with fields: category, keywords[], min_rating (float or null), budget_max (float or null), brands[] and any other relevant info. Do not loose any details.
+Rewrite the user's free text query into a shorter, cleaner, and more specific search phrase.
+Do not explain your reasoning, just output the improved query.
+Preserve all details like brand, color, size, features, budget, and rating if mentioned.
+Return only the rewritten query as plain text.
 """
 
 REWRITE_USER = """User request:
 {free_text}
 Existing sliders: min_rating={min_rating}, budget_max={budget_max}
 
-Return JSON only."""
+Rewrite this into a concise and specific search query.
+"""
 
 EXPLAIN_SYSTEM = """You are a shopping assistant. Ground your answers STRICTLY in the provided guide snippets.
 Cite sources as [S1], [S2] etc, where S* is the snippet id.

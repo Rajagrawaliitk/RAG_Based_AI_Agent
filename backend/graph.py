@@ -36,9 +36,8 @@ def safe_json_parse(content: str):
         Console().log(f"[red]Failed to parse rewrite output:[/red] {content} -> {e}")
         return {}
 
-
 def node_rewrite(s: AgentState) -> AgentState:
-    """LLM rewrites free text into structured JSON preferences"""
+    """LLM rewrites free text into a concise search query"""
     if s.get("missing"):
         return s
 
@@ -48,36 +47,19 @@ def node_rewrite(s: AgentState) -> AgentState:
         budget_max=s["preferences"].get("budget_max"),
     )
 
-    # out = _llm.invoke(f"{REWRITE_SYSTEM}\n\n{user_prompt}")
-    out =user_prompt
+    out = _llm.invoke(f"{REWRITE_SYSTEM}\n\n{user_prompt}")
+
     if hasattr(out, "content"):
-        raw_text = out.content
+        raw_text = out.content.strip()
     elif isinstance(out, dict):
-        raw_text = out.get("content", str(out))
+        raw_text = out.get("content", str(out)).strip()
     else:
         raw_text = str(out).strip()
 
-    # Now safely parse
-    try:
-        parsed = json.loads(raw_text)
-    except Exception as e:
-        from rich.console import Console
-        Console().log(f"[red]Failed to parse rewrite output: {raw_text} ({e})")
-        parsed = {}
-    # try:
-    #     parsed = safe_json_parse(out.content)
-    # except Exception as e:
-    #     console.log(f"[red]Failed to parse rewrite output:[/red] {out} ({e})")
-    #     parsed = {}
+    # Save rewritten free query (not JSON)
+    s["rewritten"] = {"query": raw_text}
+    s["preferences"]["free_query"] = raw_text   # replace old free query with improved one
 
-    # merge rewritten fields back into preferences
-    s["rewritten"] = parsed
-    s["preferences"].update({
-        "category": parsed.get("category"),
-        "brands": parsed.get("brands"),
-        "budget_max": parsed.get("budget_max") or s["preferences"].get("budget_max"),
-        "rating_min": parsed.get("min_rating") or s["preferences"].get("rating_min"),
-    })
     return s
 
 
